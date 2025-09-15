@@ -645,6 +645,11 @@ Value Worker::search(
         for (Move noisy : noisies_played) {
             m_td.history.update_noisy_stats(pos, noisy, -bonus);
         }
+
+        // Fail firm idea
+        if (abs(best_value) < abs(mated_in(MAX_PLY)) && abs(alpha) < abs(mated_in(MAX_PLY))) {
+            best_value = (best_value * depth + beta) / (depth + 1);
+        }
     }
 
     // Checkmate / Stalemate check
