@@ -598,9 +598,9 @@ Value Worker::search(
     // Checkmate / Stalemate check
     if (best_value == -VALUE_INF) {
         if (pos.is_in_check()) {
-            return mated_in(ply);
+            best_value = mated_in(ply);
         } else {
-            return 0;
+            best_value = 0;
         }
     }
 
@@ -608,10 +608,12 @@ Value Worker::search(
                   : best_move != Move::none() ? Bound::Exact
                                               : Bound::Upper;
     Move  tt_move = best_move != Move::none() ? best_move : tt_data ? tt_data->move : Move::none();
-    m_searcher.tt.store(pos, ply, raw_eval, tt_move, best_value, depth, bound);
+    Value tt_eval = abs(best_value) >= VALUE_WIN ? best_value + (best_value > 0 ? ply : -ply)
+                                                 : best_value;
+    m_searcher.tt.store(pos, ply, raw_eval, tt_move, tt_eval, depth, bound);
 
     // Update to correction history.
-    if (!is_in_check
+    if (!is_in_check && abs(best_value) < VALUE_WIN
         && !(best_move != Move::none() && (best_move.is_capture() || best_move.is_promotion()))
         && !((bound == Bound::Lower && best_value <= ss->static_eval)
              || (bound == Bound::Upper && best_value >= ss->static_eval))) {
