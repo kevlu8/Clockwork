@@ -368,8 +368,10 @@ Value Worker::search(
         return evaluate(pos);
     }
 
+    const bool EXCLUDED = ss->excluded != Move::none();
+
     auto tt_data = m_searcher.tt.probe(pos, ply);
-    if (!PV_NODE && tt_data && tt_data->depth >= depth
+    if (!PV_NODE && !EXCLUDED && tt_data && tt_data->depth >= depth
         && (tt_data->bound == Bound::Exact
             || (tt_data->bound == Bound::Lower && tt_data->score >= beta)
             || (tt_data->bound == Bound::Upper && tt_data->score <= alpha))) {
@@ -393,7 +395,8 @@ Value Worker::search(
     }
 
     // Internal Iterative Reductions
-    if ((PV_NODE || cutnode) && depth >= 8 && (!tt_data || tt_data->move == Move::none())) {
+    if ((PV_NODE || cutnode) && !EXCLUDED && depth >= 8
+        && (!tt_data || tt_data->move == Move::none())) {
         depth--;
     }
 
@@ -404,12 +407,12 @@ Value Worker::search(
         tt_adjusted_eval = tt_data->score;
     }
 
-    if (!PV_NODE && !is_in_check && depth <= tuned::rfp_depth
+    if (!PV_NODE && !EXCLUDED && !is_in_check && depth <= tuned::rfp_depth
         && tt_adjusted_eval >= beta + tuned::rfp_margin * depth) {
         return tt_adjusted_eval;
     }
 
-    if (!PV_NODE && !is_in_check && !pos.is_kp_endgame() && depth >= tuned::nmp_depth
+    if (!PV_NODE && !EXCLUDED && !is_in_check && !pos.is_kp_endgame() && depth >= tuned::nmp_depth
         && tt_adjusted_eval >= beta) {
         int R =
           tuned::nmp_base_r + depth / 4 + std::min(3, (tt_adjusted_eval - beta) / 400) + improving;
@@ -428,7 +431,8 @@ Value Worker::search(
     }
 
     // Razoring
-    if (!PV_NODE && !is_in_check && depth <= 7 && ss->static_eval + 707 * depth < alpha) {
+    if (!PV_NODE && !EXCLUDED && !is_in_check && depth <= 7
+        && ss->static_eval + 707 * depth < alpha) {
         const Value razor_score = quiesce<IS_MAIN>(pos, ss, alpha, beta, ply);
         if (razor_score <= alpha) {
             return razor_score;
@@ -452,6 +456,27 @@ Value Worker::search(
     for (Move m = moves.next(); m != Move::none(); m = moves.next()) {
         const auto nodes_before = m_search_nodes.load(std::memory_order::relaxed);
         bool       quiet        = quiet_move(m);
+        Depth      extension    = 0;
+
+        if (ss->excluded == m) {
+            continue;  // Skip excluded move
+        }
+
+        if (!EXCLUDED && depth >= 8 && tt_data && m == tt_data->move && tt_data->depth >= depth - 2
+            && !(tt_data->bound & Bound::Upper)) {
+            ss->excluded         = m;
+            Value singular_beta  = tt_data->eval - 6 * depth;
+            Depth singular_depth = (depth - 1) / 2;
+
+            Value singular_score = search<IS_MAIN, false>(pos, ss, singular_beta - 1, singular_beta,
+                                                          singular_depth, ply, cutnode);
+
+            ss->excluded = Move::none();
+
+            if (singular_score < singular_beta) {
+                extension += 1;
+            }
+        }
 
         auto move_history = quiet ? m_td.history.get_quiet_stats(pos, m, ply, ss) : 0;
 
@@ -490,7 +515,7 @@ Value Worker::search(
         repetition_info.push(pos_after.get_hash_key(), pos_after.is_reversible(m));
 
         // Get search value
-        Depth new_depth = depth - 1 + pos_after.is_in_check();
+        Depth new_depth = depth - 1 + pos_after.is_in_check() + extension;
         Value value;
         if (depth >= 3 && moves_played >= 2 + 2 * PV_NODE) {
             i32 reduction = static_cast<i32>(
@@ -608,10 +633,12 @@ Value Worker::search(
                   : best_move != Move::none() ? Bound::Exact
                                               : Bound::Upper;
     Move  tt_move = best_move != Move::none() ? best_move : tt_data ? tt_data->move : Move::none();
-    m_searcher.tt.store(pos, ply, raw_eval, tt_move, best_value, depth, bound);
+    if (!EXCLUDED) {
+        m_searcher.tt.store(pos, ply, raw_eval, tt_move, best_value, depth, bound);
+    }
 
     // Update to correction history.
-    if (!is_in_check
+    if (!is_in_check && !EXCLUDED
         && !(best_move != Move::none() && (best_move.is_capture() || best_move.is_promotion()))
         && !((bound == Bound::Lower && best_value <= ss->static_eval)
              || (bound == Bound::Upper && best_value >= ss->static_eval))) {
