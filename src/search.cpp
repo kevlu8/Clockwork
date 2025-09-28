@@ -444,6 +444,7 @@ Value Worker::search(
     MoveList   quiets_played;
     MoveList   noisies_played;
     i32        alpha_raises = 0;
+    bool       tt_move_fail = false;
 
     // Clear child's killer move.
     (ss + 1)->killer = Move::none();
@@ -515,6 +516,10 @@ Value Worker::search(
                 reduction += 1024;
             }
 
+            if (tt_move_fail) {
+                reduction -= 512;
+            }
+
             if (quiet) {
                 reduction += (1024 - move_history / 8);
             }
@@ -550,6 +555,11 @@ Value Worker::search(
         repetition_info.pop();
         m_td.pop_psqt_state();
         ss->cont_hist_entry = nullptr;
+
+        if (m == tt_data->move && std::abs(value - tt_data->score) > std::abs(depth - tt_data->depth) * 150
+            && ((tt_data->bound & Bound::Exact) || ((tt_data->bound & Bound::Lower) && value < tt_data->score)
+                || ((tt_data->bound & Bound::Upper) && value > tt_data->score)))
+            tt_move_fail = true;
 
         if (m_stopped) {
             return 0;
