@@ -132,6 +132,20 @@ public:
     [[nodiscard]] HashKey get_minor_key() const {
         return m_minor_key;
     }
+    [[nodiscard]] HashKey get_material_key() const {
+        usize npawns = piece_count(Color::White, PieceType::Pawn)
+                    + piece_count(Color::Black, PieceType::Pawn);
+        usize nknights = piece_count(Color::White, PieceType::Knight)
+                     + piece_count(Color::Black, PieceType::Knight);
+        usize nbishops = piece_count(Color::White, PieceType::Bishop)
+                    + piece_count(Color::Black, PieceType::Bishop);
+        usize nrooks = piece_count(Color::White, PieceType::Rook)
+                  + piece_count(Color::Black, PieceType::Rook);
+        usize nqueens = piece_count(Color::White, PieceType::Queen)
+                   + piece_count(Color::Black, PieceType::Queen);
+        return npawns * 17 + nknights * 17 * 23 + nbishops * 17 * 23 * 29
+             + nrooks * 17 * 23 * 29 * 31 + nqueens * 17 * 23 * 29 * 31 * 37;
+    }
 
     [[nodiscard]] Square king_sq(Color color) const {
         return piece_list_sq(color)[PieceId{0}];
