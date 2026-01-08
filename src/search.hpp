@@ -63,9 +63,12 @@ private:
 
 struct Stack {
     Value          static_eval = 0;
+    PieceType      piece       = PieceType::None;
+    Move           move        = Move::none();
     Move           killer      = Move::none();
     Move           excluded_move;
     ContHistEntry* cont_hist_entry = nullptr;
+    ContHistEntry* corr_hist_entry = nullptr;
     i32            fail_high_count = 0;
     PV             pv;
 };

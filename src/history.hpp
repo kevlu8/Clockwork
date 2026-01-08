@@ -34,6 +34,13 @@ public:
         return m_cont_hist[stm_idx][pt_idx][move.to().raw];
     }
 
+    ContHistEntry& get_corr_hist_entry(const Position& pos, Move move) {
+        usize     stm_idx = static_cast<usize>(pos.active_color());
+        PieceType pt      = pos.piece_at(move.from());
+        usize     pt_idx  = static_cast<usize>(pt) - static_cast<usize>(PieceType::Pawn);
+        return m_cont_corr_hist[stm_idx][pt_idx][move.to().raw];
+    }
+
     i32  get_conthist(const Position& pos, Move move, i32 ply, Search::Stack* ss) const;
     i32  get_quiet_stats(const Position& pos, Move move, i32 ply, Search::Stack* ss) const;
     void update_cont_hist(const Position& pos, Move move, i32 ply, Search::Stack* ss, i32 bonus);
@@ -42,8 +49,8 @@ public:
     i32  get_noisy_stats(const Position& pos, Move move) const;
     void update_noisy_stats(const Position& pos, Move move, i32 bonus);
 
-    void update_correction_history(const Position& pos, i32 depth, i32 diff);
-    i32  get_correction(const Position& pos);
+    void update_correction_history(const Position& pos, i32 ply, Search::Stack* ss, i32 depth, i32 diff);
+    i32  get_correction(const Position& pos, i32 ply, Search::Stack* ss);
 
     void clear();
 
@@ -64,6 +71,7 @@ private:
     std::array<CorrectionHistory, 2> m_non_pawn_corr_hist = {};
     CorrectionHistory                m_major_corr_hist    = {};
     CorrectionHistory                m_minor_corr_hist    = {};
+    ContHistory                      m_cont_corr_hist     = {};
 };
 
 }  // namespace Clockwork

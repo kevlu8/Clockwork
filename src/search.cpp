@@ -464,7 +464,7 @@ Value Worker::search(
     Value raw_eval    = -VALUE_INF;
     ss->static_eval   = -VALUE_INF;
     if (!is_in_check) {
-        correction      = m_td.history.get_correction(pos);
+        correction      = m_td.history.get_correction(pos, ply, ss);
         raw_eval        = tt_data && !is_mate_score(tt_data->eval) ? tt_data->eval : evaluate(pos);
         ss->static_eval = raw_eval + correction;
         improving = (ss - 2)->static_eval != -VALUE_INF && ss->static_eval > (ss - 2)->static_eval;
@@ -707,6 +707,9 @@ Value Worker::search(
 
         // Do move
         ss->cont_hist_entry = &m_td.history.get_cont_hist_entry(pos, m);
+        ss->corr_hist_entry = &m_td.history.get_corr_hist_entry(pos, m);
+        ss->piece           = pos.board()[m.from()].ptype();
+        ss->move            = m;
 
         Position pos_after = pos.move(m, m_td.push_psqt_state(), &m_searcher.tt);
         moves_played++;
@@ -807,6 +810,9 @@ Value Worker::search(
         repetition_info.pop();
         m_td.pop_psqt_state();
         ss->cont_hist_entry = nullptr;
+        ss->corr_hist_entry = nullptr;
+        ss->move            = Move::none();
+        ss->piece           = PieceType::None;
 
         if (m_stopped) {
             return 0;
@@ -885,7 +891,7 @@ Value Worker::search(
             && !(best_move != Move::none() && (best_move.is_capture() || best_move.is_promotion()))
             && !((bound == Bound::Lower && best_value <= ss->static_eval)
                  || (bound == Bound::Upper && best_value >= ss->static_eval))) {
-            m_td.history.update_correction_history(pos, depth, best_value - raw_eval);
+            m_td.history.update_correction_history(pos, ply, ss, depth, best_value - raw_eval);
         }
     }
 
@@ -950,7 +956,7 @@ Value Worker::quiesce(const Position& pos, Stack* ss, Value alpha, Value beta, i
     Value raw_eval    = -VALUE_INF;
     Value static_eval = -VALUE_INF;
     if (!is_in_check) {
-        correction  = m_td.history.get_correction(pos);
+        correction  = m_td.history.get_correction(pos, ply, ss);
         raw_eval    = tt_data && !is_mate_score(tt_data->eval) ? tt_data->eval : evaluate(pos);
         static_eval = raw_eval + correction;
 
@@ -988,6 +994,9 @@ Value Worker::quiesce(const Position& pos, Stack* ss, Value alpha, Value beta, i
 
         // Do move
         ss->cont_hist_entry = &m_td.history.get_cont_hist_entry(pos, m);
+        ss->corr_hist_entry = &m_td.history.get_corr_hist_entry(pos, m);
+        ss->piece           = pos.board()[m.from()].ptype();
+        ss->move            = m;
         Position pos_after  = pos.move(m, m_td.push_psqt_state(), &m_searcher.tt);
         moves_searched++;
 
@@ -1004,6 +1013,9 @@ Value Worker::quiesce(const Position& pos, Stack* ss, Value alpha, Value beta, i
         repetition_info.pop();
         m_td.pop_psqt_state();
         ss->cont_hist_entry = nullptr;
+        ss->corr_hist_entry = nullptr;
+        ss->move            = Move::none();
+        ss->piece           = PieceType::None;
 
         if (m_stopped) {
             return 0;
