@@ -99,7 +99,7 @@ void History::update_correction_history(const Position& pos, i32 ply, Search::St
       static_cast<usize>(black_non_pawn_key % CORRECTION_HISTORY_ENTRY_NB);
     usize major_index = static_cast<usize>(major_key % CORRECTION_HISTORY_ENTRY_NB);
     usize minor_index = static_cast<usize>(minor_key % CORRECTION_HISTORY_ENTRY_NB);
-    usize piece_index = static_cast<usize>(ss->piece) - static_cast<usize>(PieceType::Pawn);
+    usize piece_index = static_cast<usize>((ss - 1)->piece) - static_cast<usize>(PieceType::Pawn);
 
     i32 new_weight  = std::min(16, 1 + depth);
     i32 scaled_diff = diff * CORRECTION_HISTORY_GRAIN;
@@ -118,7 +118,7 @@ void History::update_correction_history(const Position& pos, i32 ply, Search::St
     update_entry(m_major_corr_hist[side_index][major_index]);
     update_entry(m_minor_corr_hist[side_index][minor_index]);
     if (ply >= 2 && (ss - 2)->corr_hist_entry != nullptr) {
-        update_entry((*(ss - 2)->corr_hist_entry)[side_index][piece_index][(ss - 1)->move.to().raw]);
+        update_entry((*(ss - 2)->corr_hist_entry)[1 ^ side_index][piece_index][(ss - 1)->move.to().raw]);
     }
 }
 
@@ -136,7 +136,7 @@ i32 History::get_correction(const Position& pos, i32 ply, Search::Stack* ss) {
       static_cast<usize>(black_non_pawn_key % CORRECTION_HISTORY_ENTRY_NB);
     usize major_index = static_cast<usize>(major_key % CORRECTION_HISTORY_ENTRY_NB);
     usize minor_index = static_cast<usize>(minor_key % CORRECTION_HISTORY_ENTRY_NB);
-    usize piece_index = static_cast<usize>(ss->piece) - static_cast<usize>(PieceType::Pawn);
+    usize piece_index = static_cast<usize>((ss - 1)->piece) - static_cast<usize>(PieceType::Pawn);
 
     i32 correction = 0;
     correction += m_pawn_corr_hist[side_index][pawn_index];
@@ -145,7 +145,7 @@ i32 History::get_correction(const Position& pos, i32 ply, Search::Stack* ss) {
     correction += m_major_corr_hist[side_index][major_index];
     correction += m_minor_corr_hist[side_index][minor_index];
     if (ply >= 2 && (ss - 2)->corr_hist_entry != nullptr) {
-        correction += (*(ss - 2)->corr_hist_entry)[side_index][piece_index][(ss - 1)->move.to().raw];
+        correction += (*(ss - 2)->corr_hist_entry)[1 ^ side_index][piece_index][(ss - 1)->move.to().raw];
     }
     return correction / CORRECTION_HISTORY_GRAIN;
 }
