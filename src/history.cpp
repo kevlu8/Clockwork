@@ -117,7 +117,7 @@ void History::update_correction_history(const Position& pos, i32 ply, Search::St
     update_entry(m_non_pawn_corr_hist[1][side_index][black_non_pawn_index]);
     update_entry(m_major_corr_hist[side_index][major_index]);
     update_entry(m_minor_corr_hist[side_index][minor_index]);
-    if (ply >= 2 && (ss - 2)->corr_hist_entry != nullptr) {
+    if (ply >= 2 && piece_index < 6 && (ss - 2)->corr_hist_entry != nullptr) {
         update_entry((*(ss - 2)->corr_hist_entry)[1 ^ side_index][piece_index][(ss - 1)->move.to().raw]);
     }
 }
@@ -144,7 +144,7 @@ i32 History::get_correction(const Position& pos, i32 ply, Search::Stack* ss) {
     correction += m_non_pawn_corr_hist[1][side_index][black_non_pawn_index];
     correction += m_major_corr_hist[side_index][major_index];
     correction += m_minor_corr_hist[side_index][minor_index];
-    if (ply >= 2 && (ss - 2)->corr_hist_entry != nullptr) {
+    if (ply >= 2 && piece_index < 6 && (ss - 2)->corr_hist_entry != nullptr) {
         correction += (*(ss - 2)->corr_hist_entry)[1 ^ side_index][piece_index][(ss - 1)->move.to().raw];
     }
     return correction / CORRECTION_HISTORY_GRAIN;
