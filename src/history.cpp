@@ -159,6 +159,7 @@ void History::clear() {
     std::memset(&m_non_pawn_corr_hist[1], 0, sizeof(CorrectionHistory));
     std::memset(&m_major_corr_hist, 0, sizeof(CorrectionHistory));
     std::memset(&m_minor_corr_hist, 0, sizeof(CorrectionHistory));
+    std::memset(&m_cont_corr_hist, 0, sizeof(ContHistory));
 }
 
 }  // namespace Clockwork
