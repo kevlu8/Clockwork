@@ -486,9 +486,10 @@ Value Worker::search(
         tt_adjusted_eval = tt_data->score;
     }
 
-    if (!PV_NODE && !is_in_check && depth <= tuned::rfp_depth && !excluded
-        && tt_adjusted_eval >= beta + tuned::rfp_margin * depth) {
-        return tt_adjusted_eval;
+    if (!PV_NODE && !is_in_check && depth <= tuned::rfp_depth && !excluded) {
+        int margin = (tuned::rfp_margin - tuned::rfp_improving * improving) * depth;
+        if (tt_adjusted_eval >= beta + margin)
+            return tt_adjusted_eval;
     }
 
     if (!PV_NODE && !is_in_check && !pos.is_kp_endgame() && depth >= tuned::nmp_depth && !excluded
